@@ -1,0 +1,6 @@
+{
+  "name": "Bəyan - Quran & Təfəkkür Dəftəri",
+  "description": "Ayələrin yanında qeydlər, xətt çəkmə, çoxdilli mənalar, səsli tilavət və Qurana aid xüsusi təfəkkür dəftəri ilə hərtərəfli İslam proqramı.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

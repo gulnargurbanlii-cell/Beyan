@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account profile created via Google Sign-In.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 254 },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email", "createdAt", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User reading preferences and last read Surah/Ayah progress.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fontSizeArabic": { "type": "number" },
+        "fontSizeTranslation": { "type": "number" },
+        "primaryTranslation": {
+          "type": "string",
+          "enum": ["az_mammadaliyev", "az_musayev", "tr_diyanet", "en_sahih", "ru_kuliev"]
+        },
+        "secondaryTranslation": {
+          "type": "string",
+          "enum": ["none", "az_mammadaliyev", "az_musayev", "tr_diyanet", "en_sahih", "ru_kuliev"]
+        },
+        "showTransliteration": { "type": "boolean" },
+        "selectedReciterId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "playbackSpeed": { "type": "number" },
+        "theme": { "type": "string", "enum": ["light", "dark"] },
+        "lastReadSurah": { "type": "number" },
+        "lastReadAyah": { "type": "number" },
+        "lastReadSurahName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "primaryTranslation", "theme", "lastReadSurah", "lastReadAyah", "updatedAt"]
+    },
+    "MarginNote": {
+      "title": "MarginNote",
+      "description": "Personal margin note attached to a specific Quran ayah.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "surahNumber": { "type": "number" },
+        "surahName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "ayahNumber": { "type": "number" },
+        "ayahArabic": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "ayahTranslation": { "type": "string", "maxLength": 4000 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 10000 },
+        "category": {
+          "type": "string",
+          "enum": ["təfəkkür", "təfsir", "həyat_dərsi", "dua", "əxlaq", "xatırlatma"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "uid", "surahNumber", "surahName", "ayahNumber", "ayahArabic", "content", "category", "createdAt", "updatedAt"]
+    },
+    "JournalEntry": {
+      "title": "JournalEntry",
+      "description": "Dedicated Quran reflection notebook entry with optional linked verses.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 30000 },
+        "reflectionPrompt": { "type": "string", "maxLength": 500 },
+        "linkedVerses": { "type": "array" },
+        "tags": { "type": "array" },
+        "starred": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "uid", "title", "category", "content", "linkedVerses", "tags", "createdAt", "updatedAt"]
+    },
+    "VerseHighlight": {
+      "title": "VerseHighlight",
+      "description": "Color highlight or underline applied to a Quran ayah.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "surahNumber": { "type": "number" },
+        "ayahNumber": { "type": "number" },
+        "color": { "type": "string", "enum": ["gold", "emerald", "cyan", "purple", "coral"] },
+        "style": { "type": "string", "enum": ["underline", "background", "both"] },
+        "note": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "uid", "surahNumber", "ayahNumber", "color", "style", "createdAt"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "Saved ayah bookmark for a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "surahNumber": { "type": "number" },
+        "surahName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "ayahNumber": { "type": "number" },
+        "arabicText": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "translation": { "type": "string", "maxLength": 4000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "uid", "surahNumber", "surahName", "ayahNumber", "arabicText", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/private/profile": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account profile isolated per user."
+    },
+    "/users/{userId}/private/settings": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Private user reading preferences and last read progress."
+    },
+    "/users/{userId}/marginNotes/{noteId}": {
+      "schema": { "$ref": "#/entities/MarginNote" },
+      "description": "User margin notes on Quran verses."
+    },
+    "/users/{userId}/journalEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/JournalEntry" },
+      "description": "User dedicated Quran journal notebook entries."
+    },
+    "/users/{userId}/highlights/{highlightId}": {
+      "schema": { "$ref": "#/entities/VerseHighlight" },
+      "description": "User highlighted and underlined Quran verses."
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/Bookmark" },
+      "description": "User bookmarked Quran verses."
+    }
+  }
+}

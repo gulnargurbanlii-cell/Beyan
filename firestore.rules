@@ -1,0 +1,254 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Security Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validation Helpers (Anti-Update-Gap)
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserSettings(data, userId) {
+      return data.keys().hasAll(['uid', 'primaryTranslation', 'theme', 'lastReadSurah', 'lastReadAyah', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid', 'fontSizeArabic', 'fontSizeTranslation', 'primaryTranslation',
+          'secondaryTranslation', 'showTransliteration', 'selectedReciterId',
+          'playbackSpeed', 'theme', 'lastReadSurah', 'lastReadAyah',
+          'lastReadSurahName', 'updatedAt'
+        ])
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.primaryTranslation in ['az_mammadaliyev', 'az_musayev', 'tr_diyanet', 'en_sahih', 'ru_kuliev']
+        && (!('secondaryTranslation' in data) || data.secondaryTranslation in ['none', 'az_mammadaliyev', 'az_musayev', 'tr_diyanet', 'en_sahih', 'ru_kuliev'])
+        && (!('fontSizeArabic' in data) || (data.fontSizeArabic is number && data.fontSizeArabic >= 14 && data.fontSizeArabic <= 60))
+        && (!('fontSizeTranslation' in data) || (data.fontSizeTranslation is number && data.fontSizeTranslation >= 10 && data.fontSizeTranslation <= 40))
+        && (!('showTransliteration' in data) || data.showTransliteration is bool)
+        && (!('selectedReciterId' in data) || (data.selectedReciterId is string && data.selectedReciterId.size() >= 1 && data.selectedReciterId.size() <= 64))
+        && (!('playbackSpeed' in data) || (data.playbackSpeed is number && data.playbackSpeed >= 0.5 && data.playbackSpeed <= 2.5))
+        && data.theme in ['light', 'dark']
+        && data.lastReadSurah is number && data.lastReadSurah >= 1 && data.lastReadSurah <= 114
+        && data.lastReadAyah is number && data.lastReadAyah >= 1 && data.lastReadAyah <= 286
+        && (!('lastReadSurahName' in data) || (data.lastReadSurahName is string && data.lastReadSurahName.size() >= 1 && data.lastReadSurahName.size() <= 100))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMarginNote(data, noteId, userId) {
+      return data.keys().hasAll([
+          'id', 'uid', 'surahNumber', 'surahName', 'ayahNumber',
+          'ayahArabic', 'content', 'category', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'uid', 'surahNumber', 'surahName', 'ayahNumber',
+          'ayahArabic', 'ayahTranslation', 'content', 'category',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id == noteId
+        && isValidId(data.id)
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.surahNumber is number && data.surahNumber >= 1 && data.surahNumber <= 114
+        && data.surahName is string && data.surahName.size() >= 1 && data.surahName.size() <= 100
+        && data.ayahNumber is number && data.ayahNumber >= 1 && data.ayahNumber <= 286
+        && data.ayahArabic is string && data.ayahArabic.size() >= 1 && data.ayahArabic.size() <= 4000
+        && (!('ayahTranslation' in data) || (data.ayahTranslation is string && data.ayahTranslation.size() <= 4000))
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 10000
+        && data.category in ['təfəkkür', 'təfsir', 'həyat_dərsi', 'dua', 'əxlaq', 'xatırlatma']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidJournalEntry(data, entryId, userId) {
+      return data.keys().hasAll([
+          'id', 'uid', 'title', 'category', 'content',
+          'linkedVerses', 'tags', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'uid', 'title', 'category', 'content',
+          'reflectionPrompt', 'linkedVerses', 'tags', 'starred',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id == entryId
+        && isValidId(data.id)
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 300
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 100
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 30000
+        && (!('reflectionPrompt' in data) || (data.reflectionPrompt is string && data.reflectionPrompt.size() <= 500))
+        && (!('starred' in data) || data.starred is bool)
+        && data.linkedVerses is list && data.linkedVerses.size() <= 20
+        && (data.linkedVerses.size() == 0 || data.linkedVerses[0] is map)
+        && data.tags is list && data.tags.size() <= 15
+        && (data.tags.size() == 0 || (data.tags[0] is string && data.tags[0].size() <= 50))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidVerseHighlight(data, highlightId, userId) {
+      return data.keys().hasAll(['id', 'uid', 'surahNumber', 'ayahNumber', 'color', 'style', 'createdAt'])
+        && data.keys().hasOnly(['id', 'uid', 'surahNumber', 'ayahNumber', 'color', 'style', 'note', 'createdAt'])
+        && data.id == highlightId
+        && isValidId(data.id)
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.surahNumber is number && data.surahNumber >= 1 && data.surahNumber <= 114
+        && data.ayahNumber is number && data.ayahNumber >= 1 && data.ayahNumber <= 286
+        && data.color in ['gold', 'emerald', 'cyan', 'purple', 'coral']
+        && data.style in ['underline', 'background', 'both']
+        && (!('note' in data) || (data.note is string && data.note.size() <= 1000))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidBookmark(data, bookmarkId, userId) {
+      return data.keys().hasAll(['id', 'uid', 'surahNumber', 'surahName', 'ayahNumber', 'arabicText', 'createdAt'])
+        && data.keys().hasOnly(['id', 'uid', 'surahNumber', 'surahName', 'ayahNumber', 'arabicText', 'translation', 'createdAt'])
+        && data.id == bookmarkId
+        && isValidId(data.id)
+        && data.uid == userId
+        && isValidId(data.uid)
+        && data.surahNumber is number && data.surahNumber >= 1 && data.surahNumber <= 114
+        && data.surahName is string && data.surahName.size() >= 1 && data.surahName.size() <= 100
+        && data.ayahNumber is number && data.ayahNumber >= 1 && data.ayahNumber <= 286
+        && data.arabicText is string && data.arabicText.size() >= 1 && data.arabicText.size() <= 4000
+        && (!('translation' in data) || (data.translation is string && data.translation.size() <= 4000))
+        && data.createdAt is timestamp;
+    }
+
+    // Private User Profile & Settings
+    match /users/{userId}/private/profile {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId) && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    match /users/{userId}/private/settings {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId) && isOwner(userId)
+        && isValidUserSettings(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isOwner(userId)
+        && isValidUserSettings(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'fontSizeArabic', 'fontSizeTranslation', 'primaryTranslation',
+          'secondaryTranslation', 'showTransliteration', 'selectedReciterId',
+          'playbackSpeed', 'theme', 'lastReadSurah', 'lastReadAyah',
+          'lastReadSurahName', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // User Margin Notes
+    match /users/{userId}/marginNotes/{noteId} {
+      allow get: if isValidId(userId) && isValidId(noteId) && isOwner(userId);
+      allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+      allow create: if isValidId(userId) && isValidId(noteId) && isOwner(userId)
+        && isValidMarginNote(incoming(), noteId, userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isValidId(noteId) && isOwner(userId)
+        && isValidMarginNote(incoming(), noteId, userId)
+        && incoming().id == existing().id
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['content', 'category', 'ayahTranslation', 'updatedAt']);
+      allow delete: if isValidId(userId) && isValidId(noteId) && isOwner(userId);
+    }
+
+    // User Journal Entries
+    match /users/{userId}/journalEntries/{entryId} {
+      allow get: if isValidId(userId) && isValidId(entryId) && isOwner(userId);
+      allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+      allow create: if isValidId(userId) && isValidId(entryId) && isOwner(userId)
+        && isValidJournalEntry(incoming(), entryId, userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isValidId(entryId) && isOwner(userId)
+        && isValidJournalEntry(incoming(), entryId, userId)
+        && incoming().id == existing().id
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'category', 'content', 'reflectionPrompt',
+          'linkedVerses', 'tags', 'starred', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isValidId(entryId) && isOwner(userId);
+    }
+
+    // User Verse Highlights
+    match /users/{userId}/highlights/{highlightId} {
+      allow get: if isValidId(userId) && isValidId(highlightId) && isOwner(userId);
+      allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+      allow create: if isValidId(userId) && isValidId(highlightId) && isOwner(userId)
+        && isValidVerseHighlight(incoming(), highlightId, userId)
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(userId) && isValidId(highlightId) && isOwner(userId)
+        && isValidVerseHighlight(incoming(), highlightId, userId)
+        && incoming().id == existing().id
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['color', 'style', 'note']);
+      allow delete: if isValidId(userId) && isValidId(highlightId) && isOwner(userId);
+    }
+
+    // User Bookmarks
+    match /users/{userId}/bookmarks/{bookmarkId} {
+      allow get: if isValidId(userId) && isValidId(bookmarkId) && isOwner(userId);
+      allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+      allow create: if isValidId(userId) && isValidId(bookmarkId) && isOwner(userId)
+        && isValidBookmark(incoming(), bookmarkId, userId)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(userId) && isValidId(bookmarkId) && isOwner(userId);
+    }
+  }
+}
